@@ -6,18 +6,20 @@ import type { WebContainer } from '@webcontainer/api';
 import { webcontainer } from '~/lib/webcontainer';
 import type { PreviewInfo } from './previews';
 import { usePreviewStore } from './previews';
+import type { FileMap as FilesFileMap } from './files';
 
 export interface ArtifactState {
   mountedFiles: Set<string>;
   selectedFile: string | undefined;
   selectedTab: string | undefined;
+  [key: string]: any; // Add index signature for compatibility
 }
 
 export interface WorkbenchViewState {
   showWorkbench: boolean;
 }
 
-export type PanelView = 'code' | 'preview' | 'terminal';
+export type PanelView = 'code' | 'preview' | 'terminal' | 'diff';
 export type WorkbenchViewType = 'code' | 'diff' | 'preview';
 
 export interface PanelViewState {
@@ -44,9 +46,9 @@ export interface WorkbenchState {
 export type FileMap = Record<string, string>;
 export type ActionAlert = {
   id?: string;
-  type: 'error' | 'success' | 'info' | 'warning' | 'preview';
+  type: 'error' | 'success' | 'info' | 'warning';
   title: string;
-  description?: string;
+  description: string;
   content?: string;
   source?: string;
 };
@@ -201,8 +203,17 @@ class WorkbenchStore {
     this.#scrollPosition.set(position);
   }
 
-  setDocuments(files: FileMap) {
-    // This is for compatibility with existing code
+  setDocuments(files: FileMap | FilesFileMap) {
+    // Convert FilesFileMap to simple FileMap if needed
+    const simpleFiles: FileMap = {};
+    Object.entries(files).forEach(([path, dirent]) => {
+      if (typeof dirent === 'string') {
+        simpleFiles[path] = dirent;
+      } else if (dirent && typeof dirent === 'object' && 'content' in dirent) {
+        simpleFiles[path] = dirent.content;
+      }
+    });
+    this.#files.set(simpleFiles);
   }
 
   setShowWorkbench(show: boolean) {
@@ -237,7 +248,7 @@ class WorkbenchStore {
     this.#showTerminalButton.set(show);
   }
 
-  setReloadedMessages() {
+  setReloadedMessages(messageIds?: string[]) {
     // Compatibility method
   }
 
@@ -260,7 +271,7 @@ class WorkbenchStore {
     }
   }
 
-  addArtifact() {
+  addArtifact(artifact?: any) {
     // Compatibility method
   }
 
@@ -357,11 +368,11 @@ class WorkbenchStore {
     // Compatibility method
   }
 
-  syncFiles() {
+  syncFiles(directoryHandle?: any) {
     return Promise.resolve();
   }
 
-  pushToGitHub() {
+  pushToGitHub(repoName?: string, commitMessage?: string, username?: string, token?: string, isPrivate?: boolean) {
     return Promise.resolve('');
   }
 
