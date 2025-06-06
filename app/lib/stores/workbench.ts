@@ -7,12 +7,21 @@ import { webcontainer } from '~/lib/webcontainer';
 import type { PreviewInfo } from './previews';
 import { usePreviewStore } from './previews';
 import type { FileMap as FilesFileMap } from './files';
+import type { ActionState } from '~/lib/runtime/action-runner';
 
 export interface ArtifactState {
   mountedFiles: Set<string>;
   selectedFile: string | undefined;
   selectedTab: string | undefined;
-  [key: string]: any; // Add index signature for compatibility
+  id: string;
+  runner: {
+    actions: any;
+    addAction: (action: any) => void;
+    runAction: (action: any) => Promise<void>;
+    buildOutput?: any;
+    handleDeployAction: (step: string, status: string, data: any) => void;
+  };
+  [key: string]: any;
 }
 
 export interface WorkbenchViewState {
@@ -49,7 +58,7 @@ export type ActionAlert = {
   type: 'error' | 'success' | 'info' | 'warning';
   title: string;
   description: string;
-  content?: string;
+  content: string;
   source?: string;
 };
 
@@ -59,6 +68,13 @@ class WorkbenchStore {
     mountedFiles: new Set(),
     selectedFile: undefined,
     selectedTab: undefined,
+    id: 'default',
+    runner: {
+      actions: {},
+      addAction: () => {},
+      runAction: async () => {},
+      handleDeployAction: () => {},
+    },
   });
 
   #files = map<FileMap>({});
@@ -101,7 +117,7 @@ class WorkbenchStore {
   }
 
   get artifacts() {
-    return this.#artifact;
+    return map({ default: this.#artifact.get() });
   }
 
   get files() {
@@ -178,7 +194,7 @@ class WorkbenchStore {
   }
 
   get firstArtifact() {
-    return this.#artifact;
+    return this.#artifact.get();
   }
 
   setSelectedFile(filePath: string | undefined) {
@@ -361,7 +377,7 @@ class WorkbenchStore {
   }
 
   getModifiedFiles() {
-    return Array.from(this.#modifiedFiles.get());
+    return this.#files.get();
   }
 
   downloadZip() {
@@ -416,6 +432,31 @@ class WorkbenchStore {
 
   abortAllActions() {
     // Implementation for aborting actions
+  }
+
+  // Missing methods that components expect
+  updateArtifact(messageId: string, data: any) {
+    // Compatibility method
+  }
+
+  addAction(data: any) {
+    // Compatibility method
+  }
+
+  runAction(data: any) {
+    return Promise.resolve();
+  }
+
+  attachBoltTerminal(terminal: any) {
+    // Compatibility method
+  }
+
+  attachTerminal(terminal: any) {
+    // Compatibility method
+  }
+
+  onTerminalResize(callback: any) {
+    // Compatibility method
   }
 }
 
