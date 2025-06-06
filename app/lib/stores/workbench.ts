@@ -15,7 +15,7 @@ export interface ArtifactState {
   selectedTab: string | undefined;
   id: string;
   runner: {
-    actions: any;
+    actions: Record<string, ActionState>;
     addAction: (action: any) => void;
     runAction: (action: any) => Promise<void>;
     buildOutput?: any;
@@ -55,7 +55,25 @@ export interface WorkbenchState {
 export type FileMap = Record<string, string>;
 export type ActionAlert = {
   id?: string;
-  type: 'error' | 'success' | 'info' | 'warning';
+  type: 'error' | 'success' | 'info';
+  title: string;
+  description: string;
+  content: string;
+  source?: 'preview' | 'terminal';
+};
+
+export type SupabaseAlert = {
+  id?: string;
+  type: 'error' | 'success' | 'info';
+  title: string;
+  description: string;
+  content: string;
+  source?: 'supabase';
+};
+
+export type DeployAlert = {
+  id?: string;
+  type: 'error' | 'success' | 'info';
   title: string;
   description: string;
   content: string;
@@ -64,6 +82,8 @@ export type ActionAlert = {
 
 class WorkbenchStore {
   #actionAlert = atom<ActionAlert | undefined>(undefined);
+  #supabaseAlert = atom<SupabaseAlert | undefined>(undefined);
+  #deployAlert = atom<DeployAlert | undefined>(undefined);
   #artifact = atom<ArtifactState>({
     mountedFiles: new Set(),
     selectedFile: undefined,
@@ -77,6 +97,7 @@ class WorkbenchStore {
     },
   });
 
+  #artifacts = map<Record<string, ArtifactState>>({});
   #files = map<FileMap>({});
   #unsavedFiles = atom<Set<string>>(new Set());
   #modifiedFiles = atom<Set<string>>(new Set());
@@ -94,7 +115,7 @@ class WorkbenchStore {
   #showTerminalButton = atom<boolean>(false);
 
   #previews = atom<PreviewInfo[]>([]);
-  #scrollPosition = atom<ScrollPosition>({ scrollTop: 0 });
+  #scrollPosition = atom<ScrollPosition>({ line: 0, column: 0 });
 
   // Initialize preview store with webcontainer
   #previewStore = usePreviewStore(webcontainer);
@@ -103,9 +124,12 @@ class WorkbenchStore {
     if (this.#previewStore) {
       // Subscribe to preview updates
       this.#previewStore.previews.subscribe((previews) => {
-        this.#previews.set(previews);
+        this.#previews.set([...previews]);
       });
     }
+
+    // Initialize default artifact
+    this.#artifacts.setKey('default', this.#artifact.get());
   }
 
   get actionAlert() {
@@ -117,7 +141,7 @@ class WorkbenchStore {
   }
 
   get artifacts() {
-    return map({ default: this.#artifact.get() });
+    return this.#artifacts;
   }
 
   get files() {
@@ -186,11 +210,11 @@ class WorkbenchStore {
   }
 
   get deployAlert() {
-    return this.#actionAlert;
+    return this.#deployAlert;
   }
 
   get supabaseAlert() {
-    return this.#actionAlert;
+    return this.#supabaseAlert;
   }
 
   get firstArtifact() {
@@ -287,8 +311,20 @@ class WorkbenchStore {
     }
   }
 
-  addArtifact(artifact?: any) {
-    // Compatibility method
+  addArtifact(artifact: { id: string; messageId: string; title: string; type: string }) {
+    const newArtifact: ArtifactState = {
+      mountedFiles: new Set(),
+      selectedFile: undefined,
+      selectedTab: undefined,
+      id: artifact.id,
+      runner: {
+        actions: {},
+        addAction: () => {},
+        runAction: async () => {},
+        handleDeployAction: () => {},
+      },
+    };
+    this.#artifacts.setKey(artifact.id, newArtifact);
   }
 
   updateFile(filePath: string, content: string) {
@@ -423,11 +459,11 @@ class WorkbenchStore {
   }
 
   clearSupabaseAlert() {
-    this.#actionAlert.set(undefined);
+    this.#supabaseAlert.set(undefined);
   }
 
   clearDeployAlert() {
-    this.#actionAlert.set(undefined);
+    this.#deployAlert.set(undefined);
   }
 
   abortAllActions() {
