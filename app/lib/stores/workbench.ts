@@ -8,15 +8,29 @@ import type { PreviewInfo } from './previews';
 import { usePreviewStore } from './previews';
 import type { ActionState } from '~/lib/runtime/action-runner';
 
+// Use compatible types that match the existing system
+export interface File {
+  type: 'file';
+  content: string;
+  isBinary?: boolean;
+}
+
+export interface Directory {
+  type: 'directory';
+}
+
+export type Dirent = File | Directory;
+export type FileMap = Record<string, Dirent | undefined>;
+
 export interface ArtifactState {
   mountedFiles: Set<string>;
   selectedFile: string | undefined;
   selectedTab: string | undefined;
   id: string;
   runner: {
-    actions: any; // Keep as any for compatibility
-    addAction: (action: any) => void;
-    runAction: (action: any) => Promise<void>;
+    actions: Record<string, ActionState>;
+    addAction: (action: ActionState) => void;
+    runAction: (action: ActionState) => Promise<void>;
     buildOutput?: any;
     handleDeployAction: (step: string, status: string, data: any) => void;
   };
@@ -51,7 +65,6 @@ export interface WorkbenchState {
   showTerminalButton: boolean;
 }
 
-export type FileMap = Record<string, string>;
 export type ActionAlert = {
   id?: string;
   type: 'error' | 'success' | 'info';
@@ -243,16 +256,28 @@ class WorkbenchStore {
   }
 
   setDocuments(files: FileMap | any) {
-    // Convert any file format to simple FileMap
-    const simpleFiles: FileMap = {};
+    // Convert any file format to compatible FileMap
+    const compatibleFiles: FileMap = {};
     Object.entries(files).forEach(([path, dirent]) => {
       if (typeof dirent === 'string') {
-        simpleFiles[path] = dirent;
-      } else if (dirent && typeof dirent === 'object' && 'content' in dirent) {
-        simpleFiles[path] = (dirent as any).content;
+        // Convert string content to File structure
+        compatibleFiles[path] = {
+          type: 'file',
+          content: dirent,
+        };
+      } else if (dirent && typeof dirent === 'object') {
+        // Already in correct format or needs conversion
+        if ('content' in dirent) {
+          compatibleFiles[path] = {
+            type: 'file',
+            content: (dirent as any).content,
+          };
+        } else {
+          compatibleFiles[path] = dirent as Dirent;
+        }
       }
     });
-    this.#files.set(simpleFiles);
+    this.#files.set(compatibleFiles);
   }
 
   setShowWorkbench(show: boolean) {
@@ -301,8 +326,10 @@ class WorkbenchStore {
   }
 
   addFile(filePath: string, content: string) {
-    const files = this.#files.get();
-    this.#files.setKey(filePath, content);
+    this.#files.setKey(filePath, {
+      type: 'file',
+      content,
+    });
 
     if (this.#previewStore) {
       // Notify preview store of file changes
@@ -328,10 +355,14 @@ class WorkbenchStore {
 
   updateFile(filePath: string, content: string) {
     const files = this.#files.get();
-    const previousContent = files[filePath];
+    const previousFile = files[filePath];
+    const previousContent = previousFile && 'content' in previousFile ? previousFile.content : undefined;
 
     if (previousContent !== content) {
-      this.#files.setKey(filePath, content);
+      this.#files.setKey(filePath, {
+        type: 'file',
+        content,
+      });
 
       // Mark file as modified
       const modifiedFiles = new Set(this.#modifiedFiles.get());
@@ -412,7 +443,17 @@ class WorkbenchStore {
   }
 
   getModifiedFiles() {
-    return this.#files.get();
+    // Convert FileMap to the expected format for filesToArtifacts
+    const files = this.#files.get();
+    const result: Record<string, { content: string }> = {};
+    
+    Object.entries(files).forEach(([path, dirent]) => {
+      if (dirent && dirent.type === 'file') {
+        result[path] = { content: dirent.content };
+      }
+    });
+    
+    return result;
   }
 
   downloadZip() {
@@ -423,7 +464,7 @@ class WorkbenchStore {
     return Promise.resolve();
   }
 
-  pushToGitHub(repoName?: string, commitMessage?: string, username?: string, token?: string, isPrivate?: boolean) {
+  pushToGitHub(repoName: string, commitMessage?: string, username?: string, token?: string, isPrivate?: boolean) {
     return Promise.resolve('');
   }
 
@@ -474,12 +515,16 @@ class WorkbenchStore {
     // Compatibility method
   }
 
-  addAction(data: any) {
-    // Compatibility method
+  addAction(action: ActionState) {
+    // Add action to the current artifact
+    const artifact = this.#artifact.get();
+    artifact.runner.addAction(action);
   }
 
-  runAction(data: any) {
-    return Promise.resolve();
+  runAction(action: ActionState) {
+    // Run action on the current artifact
+    const artifact = this.#artifact.get();
+    return artifact.runner.runAction(action);
   }
 
   attachBoltTerminal(terminal: any) {
