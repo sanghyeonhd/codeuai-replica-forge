@@ -47,7 +47,17 @@ export default {
 				},
 				accent: {
 					DEFAULT: 'hsl(var(--accent))',
-					foreground: 'hsl(var(--accent-foreground))'
+					foreground: 'hsl(var(--accent-foreground))',
+					50: 'rgba(147, 112, 219, 0.05)',
+					100: 'rgba(147, 112, 219, 0.1)',
+					200: 'rgba(147, 112, 219, 0.2)',
+					300: 'rgba(147, 112, 219, 0.3)',
+					400: 'rgba(147, 112, 219, 0.4)',
+					500: 'rgba(147, 112, 219, 0.5)',
+					600: 'rgba(147, 112, 219, 0.6)',
+					700: 'rgba(147, 112, 219, 0.7)',
+					800: 'rgba(147, 112, 219, 0.8)',
+					900: 'rgba(147, 112, 219, 0.9)',
 				},
 				popover: {
 					DEFAULT: 'hsl(var(--popover))',
@@ -66,6 +76,32 @@ export default {
 					'accent-foreground': 'hsl(var(--sidebar-accent-foreground))',
 					border: 'hsl(var(--sidebar-border))',
 					ring: 'hsl(var(--sidebar-ring))'
+				},
+				alpha: {
+					white: {
+						'5': 'rgba(255, 255, 255, 0.05)',
+						'10': 'rgba(255, 255, 255, 0.1)',
+						'20': 'rgba(255, 255, 255, 0.2)',
+						'50': 'rgba(255, 255, 255, 0.5)',
+						'80': 'rgba(255, 255, 255, 0.8)',
+					},
+					gray: {
+						'2': 'rgba(128, 128, 128, 0.02)',
+						'5': 'rgba(128, 128, 128, 0.05)',
+						'10': 'rgba(128, 128, 128, 0.1)',
+						'20': 'rgba(128, 128, 128, 0.2)',
+						'30': 'rgba(128, 128, 128, 0.3)',
+						'50': 'rgba(128, 128, 128, 0.5)',
+						'80': 'rgba(128, 128, 128, 0.8)',
+					},
+					accent: {
+						'10': 'rgba(147, 112, 219, 0.1)',
+						'20': 'rgba(147, 112, 219, 0.2)',
+					},
+					red: {
+						'10': 'rgba(239, 68, 68, 0.1)',
+						'20': 'rgba(239, 68, 68, 0.2)',
+					},
 				}
 			},
 			borderRadius: {
