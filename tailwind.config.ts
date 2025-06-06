@@ -97,11 +97,23 @@ export default {
 					accent: {
 						'10': 'rgba(147, 112, 219, 0.1)',
 						'20': 'rgba(147, 112, 219, 0.2)',
+						'30': 'rgba(147, 112, 219, 0.3)',
 					},
 					red: {
 						'10': 'rgba(239, 68, 68, 0.1)',
 						'20': 'rgba(239, 68, 68, 0.2)',
 					},
+				},
+				'bolt-elements': {
+					borderColor: 'var(--bolt-elements-borderColor)',
+					borderColorActive: 'var(--bolt-elements-borderColorActive)',
+					textPrimary: 'var(--bolt-elements-textPrimary)',
+					textSecondary: 'var(--bolt-elements-textSecondary)',
+					textTertiary: 'var(--bolt-elements-textTertiary)',
+					'background-depth-1': 'var(--bolt-elements-bg-depth-1)',
+					'background-depth-2': 'var(--bolt-elements-bg-depth-2)',
+					'background-depth-3': 'var(--bolt-elements-bg-depth-3)',
+					'background-depth-4': 'var(--bolt-elements-bg-depth-4)',
 				}
 			},
 			borderRadius: {

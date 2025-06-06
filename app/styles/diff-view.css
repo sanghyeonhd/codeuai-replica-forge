@@ -1,4 +1,5 @@
 
+
 .diff-panel-content {
   scrollbar-width: thin;
   scrollbar-color: rgba(155, 155, 155, 0.5) transparent;
@@ -56,11 +57,11 @@
 }
 
 .diff-line-number {
-  @apply w-12 shrink-0 pl-2 py-0.5 text-left font-mono text-bolt-elements-textTertiary border-r border-bolt-elements-borderColor bg-bolt-elements-background-depth-1;
+  @apply w-12 shrink-0 pl-2 py-0.5 text-left font-mono text-gray-500 border-r border-gray-200 bg-gray-50;
 }
 
 .diff-line-content {
-  @apply px-4 py-0.5 font-mono whitespace-pre flex-1 group-hover:bg-bolt-elements-background-depth-2 text-bolt-elements-textPrimary;
+  @apply px-4 py-0.5 font-mono whitespace-pre flex-1 group-hover:bg-gray-100 text-gray-900;
 }
 
 /* Cores específicas para adições/remoções */
