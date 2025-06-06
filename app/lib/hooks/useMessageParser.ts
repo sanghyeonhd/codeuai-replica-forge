@@ -1,4 +1,3 @@
-
 import type { Message } from 'ai';
 import { useCallback, useState } from 'react';
 import { StreamingMessageParser } from '~/lib/runtime/message-parser';
@@ -30,24 +29,41 @@ const messageParser = new StreamingMessageParser({
 
       // we only add shell actions when when the close tag got parsed because only then we have the content
       if (data.action.type === 'file') {
-        workbenchStore.addAction(data.action as any);
+        const actionState = {
+          ...data.action,
+          status: 'pending' as const,
+        };
+        workbenchStore.addAction(actionState);
       }
     },
     onActionClose: (data) => {
       logger.trace('onActionClose', data.action);
 
       if (data.action.type !== 'file') {
-        workbenchStore.addAction(data.action as any);
+        const actionState = {
+          ...data.action,
+          status: 'pending' as const,
+        };
+        workbenchStore.addAction(actionState);
       }
 
-      workbenchStore.runAction(data.action as any);
+      const actionState = {
+        ...data.action,
+        status: 'running' as const,
+      };
+      workbenchStore.runAction(actionState);
     },
     onActionStream: (data) => {
       logger.trace('onActionStream', data.action);
-      workbenchStore.runAction(data.action as any);
+      const actionState = {
+        ...data.action,
+        status: 'running' as const,
+      };
+      workbenchStore.runAction(actionState);
     },
   },
 });
+
 const extractTextContent = (message: Message) =>
   Array.isArray(message.content)
     ? (message.content.find((item) => item.type === 'text')?.text as string) || ''

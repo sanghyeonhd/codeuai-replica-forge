@@ -6,6 +6,7 @@ import { webcontainer } from '~/lib/webcontainer';
 import { path } from '~/utils/path';
 import { useState } from 'react';
 import type { ActionCallbackData } from '~/lib/runtime/message-parser';
+import type { ActionState } from '~/lib/runtime/action-runner';
 import { chatId } from '~/lib/persistence/useChatHistory';
 
 export function useVercelDeploy() {
@@ -58,11 +59,17 @@ export function useVercelDeploy() {
         },
       };
 
+      // Convert ActionCallbackData to ActionState
+      const actionState: ActionState = {
+        ...actionData.action,
+        status: 'running',
+      };
+
       // Add the action first
-      artifact.runner.addAction(actionData);
+      artifact.runner.addAction(actionState);
 
       // Then run it
-      await artifact.runner.runAction(actionData);
+      await artifact.runner.runAction(actionState);
 
       if (!artifact.runner.buildOutput) {
         // Notify that build failed

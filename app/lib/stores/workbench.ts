@@ -1,5 +1,4 @@
-
-import { atom, map } from 'nanostores';
+import { atom, map, type MapStore } from 'nanostores';
 import type { EditorDocument, ScrollPosition } from '~/components/editor/codemirror/CodeMirrorEditor';
 import type { ThemeInfo } from '~/utils/theme';
 import type { WebContainer } from '@webcontainer/api';
@@ -12,7 +11,7 @@ import type { ActionState } from '~/lib/runtime/action-runner';
 export interface File {
   type: 'file';
   content: string;
-  isBinary?: boolean;
+  isBinary: boolean;
   isLocked?: boolean;
 }
 
@@ -30,7 +29,7 @@ export interface ArtifactState {
   selectedTab: string | undefined;
   id: string;
   runner: {
-    actions: map<Record<string, ActionState>>;
+    actions: MapStore<Record<string, ActionState>>;
     addAction: (action: ActionState) => void;
     runAction: (action: ActionState) => Promise<void>;
     buildOutput?: any;
@@ -266,6 +265,7 @@ class WorkbenchStore {
         compatibleFiles[path] = {
           type: 'file',
           content: dirent,
+          isBinary: false,
         };
       } else if (dirent && typeof dirent === 'object') {
         // Already in correct format or needs conversion

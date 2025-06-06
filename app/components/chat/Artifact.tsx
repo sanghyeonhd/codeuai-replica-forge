@@ -35,8 +35,9 @@ export const Artifact = memo(({ messageId }: ArtifactProps) => {
 
   const actions = useStore(
     computed(artifact?.runner?.actions || workbenchStore.artifact.get().runner.actions, (actions) => {
-      // Filter out Supabase actions except for migrations
-      return Object.values(actions).filter((action: ActionState) => {
+      // Convert actions object to array and filter out Supabase actions except for migrations
+      const actionArray = Object.values(actions) as ActionState[];
+      return actionArray.filter((action: ActionState) => {
         // Exclude actions with type 'supabase' or actions that contain 'supabase' in their content
         return action.type !== 'supabase' && !(action.type === 'shell' && action.content?.includes('supabase'));
       });
