@@ -12,58 +12,36 @@ const messageParser = new StreamingMessageParser({
       logger.trace('onArtifactOpen', data);
 
       workbenchStore.showWorkbench.set(true);
-      workbenchStore.addArtifact({
-        id: data.id,
-        messageId: data.messageId,
-        title: data.title || 'Untitled',
-        type: data.type || 'default'
-      });
+      workbenchStore.addArtifact(data);
     },
     onArtifactClose: (data) => {
       logger.trace('onArtifactClose');
 
-      workbenchStore.updateArtifact(data.messageId, { closed: true });
+      workbenchStore.updateArtifact(data, { closed: true });
     },
     onActionOpen: (data) => {
       logger.trace('onActionOpen', data.action);
 
       // we only add shell actions when when the close tag got parsed because only then we have the content
       if (data.action.type === 'file') {
-        const actionState = {
-          ...data.action,
-          status: 'pending' as const,
-        };
-        workbenchStore.addAction(actionState);
+        workbenchStore.addAction(data);
       }
     },
     onActionClose: (data) => {
       logger.trace('onActionClose', data.action);
 
       if (data.action.type !== 'file') {
-        const actionState = {
-          ...data.action,
-          status: 'pending' as const,
-        };
-        workbenchStore.addAction(actionState);
+        workbenchStore.addAction(data);
       }
 
-      const actionState = {
-        ...data.action,
-        status: 'running' as const,
-      };
-      workbenchStore.runAction(actionState);
+      workbenchStore.runAction(data);
     },
     onActionStream: (data) => {
       logger.trace('onActionStream', data.action);
-      const actionState = {
-        ...data.action,
-        status: 'running' as const,
-      };
-      workbenchStore.runAction(actionState);
+      workbenchStore.runAction(data, true);
     },
   },
 });
-
 const extractTextContent = (message: Message) =>
   Array.isArray(message.content)
     ? (message.content.find((item) => item.type === 'text')?.text as string) || ''

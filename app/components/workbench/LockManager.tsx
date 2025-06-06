@@ -35,7 +35,7 @@ export function LockManager() {
             path,
             type: 'file',
           });
-        } else if (item.type === 'directory' && item.isLocked) {
+        } else if (item.type === 'folder' && item.isLocked) {
           items.push({
             path,
             type: 'folder',

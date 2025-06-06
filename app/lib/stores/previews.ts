@@ -1,4 +1,3 @@
-
 import type { WebContainer } from '@webcontainer/api';
 import { atom } from 'nanostores';
 
@@ -23,10 +22,10 @@ export class PreviewsStore {
   #webcontainer: Promise<WebContainer>;
   #broadcastChannel: BroadcastChannel;
   #lastUpdate = new Map<string, number>();
+  #watchedFiles = new Set<string>();
   #refreshTimeouts = new Map<string, NodeJS.Timeout>();
   #REFRESH_DELAY = 300;
   #storageChannel: BroadcastChannel;
-  #isInitialized = false;
 
   previews = atom<PreviewInfo[]>([]);
 
@@ -39,7 +38,7 @@ export class PreviewsStore {
     this.#broadcastChannel.onmessage = (event) => {
       const { type, previewId } = event.data;
 
-      if (type === 'file-change' || type === 'refresh-preview') {
+      if (type === 'file-change') {
         const timestamp = event.data.timestamp;
         const lastUpdate = this.#lastUpdate.get(previewId) || 0;
 
@@ -106,6 +105,15 @@ export class PreviewsStore {
           this.refreshPreview(previewId);
         }
       });
+
+      // Reload the page content
+      if (typeof window !== 'undefined' && window.location) {
+        const iframe = document.querySelector('iframe');
+
+        if (iframe) {
+          iframe.src = iframe.src;
+        }
+      }
     }
   }
 
@@ -132,81 +140,84 @@ export class PreviewsStore {
   }
 
   async #init() {
-    if (this.#isInitialized) {
-      return;
-    }
+    const webcontainer = await this.#webcontainer;
+
+    // Listen for server ready events
+    webcontainer.on('server-ready', (port, url) => {
+      console.log('[Preview] Server ready on port:', port, url);
+      this.broadcastUpdate(url);
+
+      // Initial storage sync when preview is ready
+      this._broadcastStorageSync();
+    });
 
     try {
-      const webcontainer = await this.#webcontainer;
-      this.#isInitialized = true;
+      // Watch for file changes
+      webcontainer.internal.watchPaths(
+        {
+          // Only watch specific file types that affect the preview
+          include: ['**/*.html', '**/*.css', '**/*.js', '**/*.jsx', '**/*.ts', '**/*.tsx', '**/*.json'],
+          exclude: ['**/node_modules/**', '**/.git/**', '**/dist/**', '**/build/**', '**/coverage/**'],
+        },
+        async (_events) => {
+          const previews = this.previews.get();
 
-      console.log('[Preview] WebContainer initialized, setting up preview store');
+          for (const preview of previews) {
+            const previewId = this.getPreviewId(preview.baseUrl);
 
-      // Listen for server ready events
-      webcontainer.on('server-ready', (port, url) => {
-        console.log('[Preview] Server ready on port:', port, url);
-        this.broadcastUpdate(url);
-        this._broadcastStorageSync();
-      });
-
-      // Listen for port events
-      webcontainer.on('port', (port, type, url) => {
-        console.log('[Preview] Port event:', { port, type, url });
-        
-        let previewInfo = this.#availablePreviews.get(port);
-
-        if (type === 'close' && previewInfo) {
-          this.#availablePreviews.delete(port);
-          this.previews.set(this.previews.get().filter((preview) => preview.port !== port));
-          return;
-        }
-
-        const previews = this.previews.get();
-
-        if (!previewInfo) {
-          previewInfo = { port, ready: type === 'open', baseUrl: url };
-          this.#availablePreviews.set(port, previewInfo);
-          previews.push(previewInfo);
-        }
-
-        previewInfo.ready = type === 'open';
-        previewInfo.baseUrl = url;
-
-        this.previews.set([...previews]);
-
-        if (type === 'open') {
-          this.broadcastUpdate(url);
-        }
-      });
-
-      // Set up file watching for live preview updates
-      try {
-        const watcher = webcontainer.internal.watchPaths(
-          {
-            include: ['**/*.html', '**/*.css', '**/*.js', '**/*.jsx', '**/*.ts', '**/*.tsx', '**/*.json'],
-            exclude: ['**/node_modules/**', '**/.git/**', '**/dist/**', '**/build/**', '**/coverage/**'],
-          },
-          async (_events) => {
-            console.log('[Preview] File changes detected, refreshing previews');
-            const previews = this.previews.get();
-
-            for (const preview of previews) {
-              const previewId = this.getPreviewId(preview.baseUrl);
-              if (previewId) {
-                this.broadcastFileChange(previewId);
-              }
+            if (previewId) {
+              this.broadcastFileChange(previewId);
             }
-          },
-        );
+          }
+        },
+      );
 
-        console.log('[Preview] File watcher set up successfully');
-      } catch (error) {
-        console.error('[Preview] Error setting up file watcher:', error);
+      // Watch for DOM changes that might affect storage
+      if (typeof window !== 'undefined') {
+        const observer = new MutationObserver((_mutations) => {
+          // Broadcast storage changes when DOM changes
+          this._broadcastStorageSync();
+        });
+
+        observer.observe(document.body, {
+          childList: true,
+          subtree: true,
+          characterData: true,
+          attributes: true,
+        });
+      }
+    } catch (error) {
+      console.error('[Preview] Error setting up watchers:', error);
+    }
+
+    // Listen for port events
+    webcontainer.on('port', (port, type, url) => {
+      let previewInfo = this.#availablePreviews.get(port);
+
+      if (type === 'close' && previewInfo) {
+        this.#availablePreviews.delete(port);
+        this.previews.set(this.previews.get().filter((preview) => preview.port !== port));
+
+        return;
       }
 
-    } catch (error) {
-      console.error('[Preview] Error initializing WebContainer:', error);
-    }
+      const previews = this.previews.get();
+
+      if (!previewInfo) {
+        previewInfo = { port, ready: type === 'open', baseUrl: url };
+        this.#availablePreviews.set(port, previewInfo);
+        previews.push(previewInfo);
+      }
+
+      previewInfo.ready = type === 'open';
+      previewInfo.baseUrl = url;
+
+      this.previews.set([...previews]);
+
+      if (type === 'open') {
+        this.broadcastUpdate(url);
+      }
+    });
   }
 
   // Helper to extract preview ID from URL
@@ -215,12 +226,22 @@ export class PreviewsStore {
     return match ? match[1] : null;
   }
 
+  // Broadcast state change to all tabs
+  broadcastStateChange(previewId: string) {
+    const timestamp = Date.now();
+    this.#lastUpdate.set(previewId, timestamp);
+
+    this.#broadcastChannel.postMessage({
+      type: 'state-change',
+      previewId,
+      timestamp,
+    });
+  }
+
   // Broadcast file change to all tabs
   broadcastFileChange(previewId: string) {
     const timestamp = Date.now();
     this.#lastUpdate.set(previewId, timestamp);
-
-    console.log('[Preview] Broadcasting file change for preview:', previewId);
 
     this.#broadcastChannel.postMessage({
       type: 'file-change',
@@ -236,8 +257,6 @@ export class PreviewsStore {
     if (previewId) {
       const timestamp = Date.now();
       this.#lastUpdate.set(previewId, timestamp);
-
-      console.log('[Preview] Broadcasting update for preview:', previewId);
 
       this.#broadcastChannel.postMessage({
         type: 'file-change',
@@ -258,13 +277,18 @@ export class PreviewsStore {
 
     // Set a new timeout for this refresh
     const timeout = setTimeout(() => {
-      console.log('[Preview] Refreshing preview:', previewId);
-      
-      this.#broadcastChannel.postMessage({
-        type: 'refresh-preview',
-        previewId,
-        timestamp: Date.now(),
-      });
+      const previews = this.previews.get();
+      const preview = previews.find((p) => this.getPreviewId(p.baseUrl) === previewId);
+
+      if (preview) {
+        preview.ready = false;
+        this.previews.set([...previews]);
+
+        requestAnimationFrame(() => {
+          preview.ready = true;
+          this.previews.set([...previews]);
+        });
+      }
 
       this.#refreshTimeouts.delete(previewId);
     }, this.#REFRESH_DELAY);
@@ -283,27 +307,18 @@ export class PreviewsStore {
       }
     }
   }
-
-  // Method to trigger refresh when files are saved
-  notifyFileChange() {
-    console.log('[Preview] File change notification received');
-    const previews = this.previews.get();
-
-    for (const preview of previews) {
-      const previewId = this.getPreviewId(preview.baseUrl);
-      if (previewId) {
-        this.broadcastFileChange(previewId);
-      }
-    }
-  }
 }
 
 // Create a singleton instance
 let previewsStore: PreviewsStore | null = null;
 
-export function usePreviewStore(webcontainerPromise?: Promise<WebContainer>) {
-  if (!previewsStore && webcontainerPromise) {
-    previewsStore = new PreviewsStore(webcontainerPromise);
+export function usePreviewStore() {
+  if (!previewsStore) {
+    /*
+     * Initialize with a Promise that resolves to WebContainer
+     * This should match how you're initializing WebContainer elsewhere
+     */
+    previewsStore = new PreviewsStore(Promise.resolve({} as WebContainer));
   }
 
   return previewsStore;

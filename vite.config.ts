@@ -1,4 +1,3 @@
-
 import { cloudflareDevProxyVitePlugin as remixCloudflareDevProxy, vitePlugin as remixVitePlugin } from '@remix-run/dev';
 import UnoCSS from 'unocss/vite';
 import { defineConfig, type ViteDevServer } from 'vite';
@@ -9,7 +8,6 @@ import * as dotenv from 'dotenv';
 import { execSync } from 'child_process';
 import { readFileSync } from 'fs';
 import { join } from 'path';
-import { componentTagger } from "lovable-tagger";
 
 dotenv.config();
 
@@ -76,7 +74,6 @@ const gitInfo = getGitInfo();
 export default defineConfig((config) => {
   return {
     server: {
-      host: "::",
       port: 8080,
     },
     define: {
@@ -113,7 +110,7 @@ export default defineConfig((config) => {
       }),
       {
         name: 'buffer-polyfill',
-        transform(code: string, id: string) {
+        transform(code, id) {
           if (id.includes('env.mjs')) {
             return {
               code: `import { Buffer } from 'buffer';\n${code}`,
@@ -136,9 +133,8 @@ export default defineConfig((config) => {
       UnoCSS(),
       tsconfigPaths(),
       chrome129IssuePlugin(),
-      config.mode === 'development' && componentTagger(),
       config.mode === 'production' && optimizeCssModules({ apply: 'build' }),
-    ].filter(Boolean),
+    ],
     envPrefix: [
       'VITE_',
       'OPENAI_LIKE_API_BASE_URL',

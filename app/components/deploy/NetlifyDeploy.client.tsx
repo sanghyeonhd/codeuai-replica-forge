@@ -6,7 +6,6 @@ import { webcontainer } from '~/lib/webcontainer';
 import { path } from '~/utils/path';
 import { useState } from 'react';
 import type { ActionCallbackData } from '~/lib/runtime/message-parser';
-import type { ActionState } from '~/lib/runtime/action-runner';
 import { chatId } from '~/lib/persistence/useChatHistory';
 
 export function useNetlifyDeploy() {
@@ -60,17 +59,11 @@ export function useNetlifyDeploy() {
         },
       };
 
-      // Convert ActionCallbackData to ActionState
-      const actionState: ActionState = {
-        ...actionData.action,
-        status: 'running',
-      };
-
       // Add the action first
-      artifact.runner.addAction(actionState);
+      artifact.runner.addAction(actionData);
 
       // Then run it
-      await artifact.runner.runAction(actionState);
+      await artifact.runner.runAction(actionData);
 
       if (!artifact.runner.buildOutput) {
         // Notify that build failed
