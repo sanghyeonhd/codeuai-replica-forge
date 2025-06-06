@@ -6,7 +6,6 @@ import type { WebContainer } from '@webcontainer/api';
 import { webcontainer } from '~/lib/webcontainer';
 import type { PreviewInfo } from './previews';
 import { usePreviewStore } from './previews';
-import type { FileMap as FilesFileMap } from './files';
 import type { ActionState } from '~/lib/runtime/action-runner';
 
 export interface ArtifactState {
@@ -15,7 +14,7 @@ export interface ArtifactState {
   selectedTab: string | undefined;
   id: string;
   runner: {
-    actions: Record<string, ActionState>;
+    actions: any; // Keep as any for compatibility
     addAction: (action: any) => void;
     runAction: (action: any) => Promise<void>;
     buildOutput?: any;
@@ -77,7 +76,7 @@ export type DeployAlert = {
   title: string;
   description: string;
   content: string;
-  source?: string;
+  source?: 'vercel' | 'netlify' | 'github';
 };
 
 class WorkbenchStore {
@@ -243,14 +242,14 @@ class WorkbenchStore {
     this.#scrollPosition.set(position);
   }
 
-  setDocuments(files: FileMap | FilesFileMap) {
-    // Convert FilesFileMap to simple FileMap if needed
+  setDocuments(files: FileMap | any) {
+    // Convert any file format to simple FileMap
     const simpleFiles: FileMap = {};
     Object.entries(files).forEach(([path, dirent]) => {
       if (typeof dirent === 'string') {
         simpleFiles[path] = dirent;
       } else if (dirent && typeof dirent === 'object' && 'content' in dirent) {
-        simpleFiles[path] = dirent.content;
+        simpleFiles[path] = (dirent as any).content;
       }
     });
     this.#files.set(simpleFiles);
@@ -471,7 +470,7 @@ class WorkbenchStore {
   }
 
   // Missing methods that components expect
-  updateArtifact(messageId: string, data: any) {
+  updateArtifact(messageId: string, data?: any) {
     // Compatibility method
   }
 
