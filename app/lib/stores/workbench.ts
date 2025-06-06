@@ -1,3 +1,4 @@
+
 import { atom, map } from 'nanostores';
 import type { EditorDocument, ScrollPosition } from '~/components/editor/codemirror/CodeMirrorEditor';
 import type { ThemeInfo } from '~/utils/theme';
@@ -17,6 +18,7 @@ export interface WorkbenchViewState {
 }
 
 export type PanelView = 'code' | 'preview' | 'terminal';
+export type WorkbenchViewType = 'code' | 'diff' | 'preview';
 
 export interface PanelViewState {
   currentView: PanelView;
@@ -96,6 +98,10 @@ class WorkbenchStore {
     return this.#artifact;
   }
 
+  get artifacts() {
+    return this.#artifact;
+  }
+
   get files() {
     return this.#files;
   }
@@ -156,12 +162,47 @@ class WorkbenchStore {
     return this.#scrollPosition;
   }
 
+  // Compatibility getters for existing code
+  get alert() {
+    return this.#actionAlert;
+  }
+
+  get deployAlert() {
+    return this.#actionAlert;
+  }
+
+  get supabaseAlert() {
+    return this.#actionAlert;
+  }
+
+  get firstArtifact() {
+    return this.#artifact;
+  }
+
   setSelectedFile(filePath: string | undefined) {
     this.#selectedFile.set(filePath);
   }
 
   setCurrentDocumnet(document: EditorDocument | undefined) {
     this.#currentDocument.set(document);
+  }
+
+  setCurrentDocumentContent(content: string) {
+    const current = this.#currentDocument.get();
+    if (current) {
+      this.#currentDocument.set({
+        ...current,
+        value: content,
+      });
+    }
+  }
+
+  setCurrentDocumentScrollPosition(position: ScrollPosition) {
+    this.#scrollPosition.set(position);
+  }
+
+  setDocuments(files: FileMap) {
+    // This is for compatibility with existing code
   }
 
   setShowWorkbench(show: boolean) {
@@ -196,6 +237,10 @@ class WorkbenchStore {
     this.#showTerminalButton.set(show);
   }
 
+  setReloadedMessages() {
+    // Compatibility method
+  }
+
   toggleTerminal(value?: boolean) {
     const newValue = value !== undefined ? value : !this.#showTerminal.get();
     this.#showTerminal.set(newValue);
@@ -213,6 +258,10 @@ class WorkbenchStore {
       // Notify preview store of file changes
       this.#previewStore.notifyFileChange();
     }
+  }
+
+  addArtifact() {
+    // Compatibility method
   }
 
   updateFile(filePath: string, content: string) {
@@ -245,6 +294,10 @@ class WorkbenchStore {
     }
   }
 
+  saveCurrentDocument() {
+    return Promise.resolve();
+  }
+
   saveAllFiles() {
     this.#unsavedFiles.set(new Set());
 
@@ -271,9 +324,83 @@ class WorkbenchStore {
     }
   }
 
+  deleteFolder(folderPath: string) {
+    // Compatibility method
+  }
+
+  createFile(filePath: string, content: string = '') {
+    this.addFile(filePath, content);
+  }
+
+  createFolder(folderPath: string) {
+    // Compatibility method
+  }
+
+  resetCurrentDocument() {
+    // Compatibility method
+  }
+
   resetAllFileStates() {
     this.#unsavedFiles.set(new Set());
     this.#modifiedFiles.set(new Set());
+  }
+
+  resetAllFileModifications() {
+    this.resetAllFileStates();
+  }
+
+  getModifiedFiles() {
+    return Array.from(this.#modifiedFiles.get());
+  }
+
+  downloadZip() {
+    // Compatibility method
+  }
+
+  syncFiles() {
+    return Promise.resolve();
+  }
+
+  pushToGitHub() {
+    return Promise.resolve('');
+  }
+
+  // File locking methods for compatibility
+  lockFile(filePath: string) {
+    // Compatibility method
+  }
+
+  unlockFile(filePath: string) {
+    // Compatibility method
+  }
+
+  lockFolder(folderPath: string) {
+    // Compatibility method
+  }
+
+  unlockFolder(folderPath: string) {
+    // Compatibility method
+  }
+
+  isFileLocked(filePath: string) {
+    return false;
+  }
+
+  isFolderLocked(folderPath: string) {
+    return false;
+  }
+
+  // Alert management methods
+  clearAlert() {
+    this.#actionAlert.set(undefined);
+  }
+
+  clearSupabaseAlert() {
+    this.#actionAlert.set(undefined);
+  }
+
+  clearDeployAlert() {
+    this.#actionAlert.set(undefined);
   }
 
   abortAllActions() {
