@@ -31,17 +31,17 @@ export const Artifact = memo(({ messageId }: ArtifactProps) => {
   const [allActionFinished, setAllActionFinished] = useState(false);
 
   const artifacts = useStore(workbenchStore.artifacts);
-  const artifact = artifacts[messageId];
+  const artifact = artifacts[messageId] || artifacts['default'];
 
   const actions = useStore(
-    computed(artifact.runner.actions, (actions) => {
+    computed(artifact?.runner?.actions || workbenchStore.artifact.get().runner.actions, (actions) => {
       // Filter out Supabase actions except for migrations
-      return Object.values(actions).filter((action) => {
+      return Object.values(actions).filter((action: ActionState) => {
         // Exclude actions with type 'supabase' or actions that contain 'supabase' in their content
         return action.type !== 'supabase' && !(action.type === 'shell' && action.content?.includes('supabase'));
       });
     }),
-  );
+  ) as ActionState[];
 
   const toggleActions = () => {
     userToggledActions.current = true;
@@ -53,16 +53,16 @@ export const Artifact = memo(({ messageId }: ArtifactProps) => {
       setShowActions(true);
     }
 
-    if (actions.length !== 0 && artifact.type === 'bundled') {
+    if (actions.length !== 0 && artifact?.type === 'bundled') {
       const finished = !actions.find(
-        (action) => action.status !== 'complete' && !(action.type === 'start' && action.status === 'running'),
+        (action: ActionState) => action.status !== 'complete' && !(action.type === 'start' && action.status === 'running'),
       );
 
       if (allActionFinished !== finished) {
         setAllActionFinished(finished);
       }
     }
-  }, [actions, artifact.type, allActionFinished]);
+  }, [actions, artifact?.type, allActionFinished]);
 
   // Determine the dynamic title based on state for bundled artifacts
   const dynamicTitle =
@@ -97,9 +97,9 @@ export const Artifact = memo(({ messageId }: ArtifactProps) => {
               </div>
             </div>
           </button>
-          {artifact.type !== 'bundled' && <div className="bg-bolt-elements-artifacts-borderColor w-[1px]" />}
+          {artifact?.type !== 'bundled' && <div className="bg-bolt-elements-artifacts-borderColor w-[1px]" />}
           <AnimatePresence>
-            {actions.length && artifact.type !== 'bundled' && (
+            {actions.length && artifact?.type !== 'bundled' && (
               <motion.button
                 initial={{ width: 0 }}
                 animate={{ width: 'auto' }}
@@ -115,7 +115,7 @@ export const Artifact = memo(({ messageId }: ArtifactProps) => {
             )}
           </AnimatePresence>
         </div>
-        {artifact.type === 'bundled' && (
+        {artifact?.type === 'bundled' && (
           <div className="flex items-center gap-1.5 p-5 bg-bolt-elements-actions-background border-t border-bolt-elements-artifacts-borderColor">
             <div className={classNames('text-lg', getIconColor(allActionFinished ? 'complete' : 'running'))}>
               {allActionFinished ? (
@@ -135,7 +135,7 @@ export const Artifact = memo(({ messageId }: ArtifactProps) => {
           </div>
         )}
         <AnimatePresence>
-          {artifact.type !== 'bundled' && showActions && actions.length > 0 && (
+          {artifact?.type !== 'bundled' && showActions && actions.length > 0 && (
             <motion.div
               className="actions"
               initial={{ height: 0 }}

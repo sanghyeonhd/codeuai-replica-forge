@@ -1,3 +1,4 @@
+
 import type { Message } from 'ai';
 import { useCallback, useState } from 'react';
 import { StreamingMessageParser } from '~/lib/runtime/message-parser';
@@ -12,33 +13,38 @@ const messageParser = new StreamingMessageParser({
       logger.trace('onArtifactOpen', data);
 
       workbenchStore.showWorkbench.set(true);
-      workbenchStore.addArtifact(data);
+      workbenchStore.addArtifact({
+        id: data.id,
+        messageId: data.messageId,
+        title: data.title || 'Untitled',
+        type: data.type || 'default'
+      });
     },
     onArtifactClose: (data) => {
       logger.trace('onArtifactClose');
 
-      workbenchStore.updateArtifact(data, { closed: true });
+      workbenchStore.updateArtifact(data.messageId, { closed: true });
     },
     onActionOpen: (data) => {
       logger.trace('onActionOpen', data.action);
 
       // we only add shell actions when when the close tag got parsed because only then we have the content
       if (data.action.type === 'file') {
-        workbenchStore.addAction(data);
+        workbenchStore.addAction(data.action as any);
       }
     },
     onActionClose: (data) => {
       logger.trace('onActionClose', data.action);
 
       if (data.action.type !== 'file') {
-        workbenchStore.addAction(data);
+        workbenchStore.addAction(data.action as any);
       }
 
-      workbenchStore.runAction(data);
+      workbenchStore.runAction(data.action as any);
     },
     onActionStream: (data) => {
       logger.trace('onActionStream', data.action);
-      workbenchStore.runAction(data, true);
+      workbenchStore.runAction(data.action as any);
     },
   },
 });

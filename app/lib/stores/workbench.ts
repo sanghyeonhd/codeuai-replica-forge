@@ -13,10 +13,12 @@ export interface File {
   type: 'file';
   content: string;
   isBinary?: boolean;
+  isLocked?: boolean;
 }
 
 export interface Directory {
   type: 'directory';
+  isLocked?: boolean;
 }
 
 export type Dirent = File | Directory;
@@ -28,7 +30,7 @@ export interface ArtifactState {
   selectedTab: string | undefined;
   id: string;
   runner: {
-    actions: Record<string, ActionState>;
+    actions: map<Record<string, ActionState>>;
     addAction: (action: ActionState) => void;
     runAction: (action: ActionState) => Promise<void>;
     buildOutput?: any;
@@ -42,7 +44,7 @@ export interface WorkbenchViewState {
 }
 
 export type PanelView = 'code' | 'preview' | 'terminal' | 'diff';
-export type WorkbenchViewType = 'code' | 'diff' | 'preview';
+export type WorkbenchViewType = 'code' | 'diff' | 'preview' | 'terminal';
 
 export interface PanelViewState {
   currentView: PanelView;
@@ -102,7 +104,7 @@ class WorkbenchStore {
     selectedTab: undefined,
     id: 'default',
     runner: {
-      actions: {},
+      actions: map<Record<string, ActionState>>({}),
       addAction: () => {},
       runAction: async () => {},
       handleDeployAction: () => {},
@@ -271,6 +273,8 @@ class WorkbenchStore {
           compatibleFiles[path] = {
             type: 'file',
             content: (dirent as any).content,
+            isBinary: (dirent as any).isBinary || false,
+            isLocked: (dirent as any).isLocked || false,
           };
         } else {
           compatibleFiles[path] = dirent as Dirent;
@@ -329,6 +333,7 @@ class WorkbenchStore {
     this.#files.setKey(filePath, {
       type: 'file',
       content,
+      isBinary: false,
     });
 
     if (this.#previewStore) {
@@ -344,7 +349,7 @@ class WorkbenchStore {
       selectedTab: undefined,
       id: artifact.id,
       runner: {
-        actions: {},
+        actions: map<Record<string, ActionState>>({}),
         addAction: () => {},
         runAction: async () => {},
         handleDeployAction: () => {},
@@ -362,6 +367,7 @@ class WorkbenchStore {
       this.#files.setKey(filePath, {
         type: 'file',
         content,
+        isBinary: false,
       });
 
       // Mark file as modified
@@ -470,27 +476,47 @@ class WorkbenchStore {
 
   // File locking methods for compatibility
   lockFile(filePath: string) {
-    // Compatibility method
+    const files = this.#files.get();
+    const file = files[filePath];
+    if (file && file.type === 'file') {
+      this.#files.setKey(filePath, { ...file, isLocked: true });
+    }
   }
 
   unlockFile(filePath: string) {
-    // Compatibility method
+    const files = this.#files.get();
+    const file = files[filePath];
+    if (file && file.type === 'file') {
+      this.#files.setKey(filePath, { ...file, isLocked: false });
+    }
   }
 
   lockFolder(folderPath: string) {
-    // Compatibility method
+    const files = this.#files.get();
+    const folder = files[folderPath];
+    if (folder && folder.type === 'directory') {
+      this.#files.setKey(folderPath, { ...folder, isLocked: true });
+    }
   }
 
   unlockFolder(folderPath: string) {
-    // Compatibility method
+    const files = this.#files.get();
+    const folder = files[folderPath];
+    if (folder && folder.type === 'directory') {
+      this.#files.setKey(folderPath, { ...folder, isLocked: false });
+    }
   }
 
   isFileLocked(filePath: string) {
-    return false;
+    const files = this.#files.get();
+    const file = files[filePath];
+    return !!(file && file.type === 'file' && file.isLocked);
   }
 
   isFolderLocked(folderPath: string) {
-    return false;
+    const files = this.#files.get();
+    const folder = files[folderPath];
+    return !!(folder && folder.type === 'directory' && folder.isLocked);
   }
 
   // Alert management methods
@@ -518,7 +544,9 @@ class WorkbenchStore {
   addAction(action: ActionState) {
     // Add action to the current artifact
     const artifact = this.#artifact.get();
-    artifact.runner.addAction(action);
+    const actions = artifact.runner.actions.get();
+    const actionId = `action_${Date.now()}_${Math.random()}`;
+    artifact.runner.actions.setKey(actionId, action);
   }
 
   runAction(action: ActionState) {
